@@ -128,9 +128,6 @@ def stateFromScreen(screen):
 
 
 
-EPS_START = 0.9
-EPS_END = 0.05
-EPS_DECAY = 200
 
 def epsilonGreedyChooser(normalAction, state, stepsDone):
     epsThreshold = EPS_END + (EPS_START - EPS_END) * math.exp(-1. * stepsDone / EPS_DECAY)

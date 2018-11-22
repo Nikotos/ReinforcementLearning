@@ -37,6 +37,7 @@ def mainCycle():
     
     print("started learning")
     for e in tqdm.tqdm(range(AMOUNT_OF_EPISODES)):
+        currentLifes = 5
         totalDisqountedReward = 0
         ENVIRONMENT.reset()
         stateHolder.initWithFirstScreens()
@@ -47,8 +48,15 @@ def mainCycle():
             action = epsilonGreedyChooser(normalAction, stateHolder.getState().unsqueeze(0), stepsDone)
             stepsDone += 1
             screen, reward, isDone, info = ENVIRONMENT.step(action)
+            
+            if reward == 1:
+                reward *= 10
             if not isDone:
                 reward += 1
+            if info['ale.lives'] < currentLifes:
+                currentLifes -= 1
+                reward -= 10
+            
             stateHolder.pushScreen(screen)
             gameMemory.pushScreenActionReward(screen, action, reward, isDone)
             totalDisqountedReward = reward + totalDisqountedReward * DISCOUNT_FACTOR
@@ -74,10 +82,6 @@ def mainCycle():
 
 
 
-
-
-
-            
 
 
 

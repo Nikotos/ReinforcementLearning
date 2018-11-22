@@ -26,6 +26,8 @@ def mainCycle():
 
     
     fillGameMemoryWithRandomTransitions(gameMemory)
+    saveToFile(gameMemory, "gameMemory.pkl")
+    gameMemory = loadFromFile("gameMemory.pkl")
     stepsDone = 0
     normalAction = lambda state: keyNet(state).max(1)[1].view(1, 1)
     stateHolder = OneStateHolder()
@@ -63,6 +65,7 @@ def mainCycle():
         
         if e % HELPER_UPDATE == 0:
             helperNet.load_state_dict(keyNet.state_dict())
+            helperNet.eval()
 
         print("totalDisqountedReward = %f" % (totalDisqountedReward))
 

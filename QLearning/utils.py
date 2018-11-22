@@ -1,5 +1,6 @@
 from config import *
 import numpy as np
+import pickle
 
 
 class OneStateHolder:
@@ -43,6 +44,13 @@ class OneStateHolder:
    
 """
 class GameMemory:
+    totalMemoryCapacity = 0
+    screens = []
+    actions = []
+    rewards = []
+    isTerminal = []
+    actualMemoryLen = 0
+    actualInputPosition = 0
     
     def __init__(self, replayMemoryCapacity = REPLAY_MEMORY):
         self.totalMemoryCapacity = replayMemoryCapacity
@@ -52,7 +60,7 @@ class GameMemory:
         self.isTerminal = []
         self.actualMemoryLen = 0
         self.actualInputPosition = 0
-    
+        
     def pushScreenActionReward(self, screen, action, reward, isTerminal):
         if self.actualMemoryLen < self.totalMemoryCapacity:
             self.screens.append(stateFromScreen(screen))
@@ -85,8 +93,7 @@ class GameMemory:
         return (state, action, nextState, reward, isTerminal)
                 
     def getBatch(self, batchSize = BATCH_SIZE, randomIndicies = None):
-        if batchSize > self.actualMemoryLen:
-            return None
+        print(self.actualMemoryLen)
         if randomIndicies == None:
             randomIndicies = np.random.choice(self.actualMemoryLen - 4, batchSize) + 3
             _, H, W = self.screens[0].size()
@@ -108,6 +115,13 @@ class GameMemory:
         return self.actualMemoryLen
 
 
+def saveToFile(object, filename):
+    with open(filename, "wb") as file:
+        pickle.dump(object, file)
+
+def loadFromFile(filename):
+    with open(filename, "rb") as file:
+        return pickle.load(file)
 
 
 
@@ -139,9 +153,9 @@ def epsilonGreedyChooser(normalAction, state, stepsDone):
 
 def fillGameMemoryWithRandomTransitions(gameMemory):
     print("Preparing Dataset")
-    progressBar = tqdm.tqdm(total = 100)
+    progressBar = myProgressBar(REPLAY_MEMORY)
     while len(gameMemory) < REPLAY_MEMORY:
-        progressBar.update((len(gameMemory) / REPLAY_MEMORY) * 100 )
+        progressBar.update(len(gameMemory))
         ENVIRONMENT.reset()
         isDone = False
         while not isDone:
@@ -149,9 +163,18 @@ def fillGameMemoryWithRandomTransitions(gameMemory):
             screen, reward, isDone, info = ENVIRONMENT.step(action)
             ENVIRONMENT.render()
             gameMemory.pushScreenActionReward(screen, action, reward, isDone)
-        print("dataset finished")
+    print("dataset finished")
 
 
+class myProgressBar:
+    def __init__(self, amountToReach):
+        self.progressBar = tqdm.tqdm(total = amountToReach)
+        self.amountToReach = amountToReach
+        self.updatePreviousAmount = 0
+
+    def update(self, newAmount):
+        self.progressBar.update(newAmount - self.updatePreviousAmount)
+        self.updatePreviousAmount = newAmount
 
 
 

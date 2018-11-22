@@ -93,7 +93,6 @@ class GameMemory:
         return (state, action, nextState, reward, isTerminal)
                 
     def getBatch(self, batchSize = BATCH_SIZE, randomIndicies = None):
-        print(self.actualMemoryLen)
         if randomIndicies == None:
             randomIndicies = np.random.choice(self.actualMemoryLen - 4, batchSize) + 3
             _, H, W = self.screens[0].size()
@@ -113,15 +112,6 @@ class GameMemory:
 
     def __len__(self):
         return self.actualMemoryLen
-
-
-def saveToFile(object, filename):
-    with open(filename, "wb") as file:
-        pickle.dump(object, file)
-
-def loadFromFile(filename):
-    with open(filename, "rb") as file:
-        return pickle.load(file)
 
 
 
@@ -164,20 +154,6 @@ def fillGameMemoryWithRandomTransitions(gameMemory):
             ENVIRONMENT.render()
             gameMemory.pushScreenActionReward(screen, action, reward, isDone)
     print("dataset finished")
-
-
-class myProgressBar:
-    def __init__(self, amountToReach):
-        self.progressBar = tqdm.tqdm(total = amountToReach)
-        self.amountToReach = amountToReach
-        self.updatePreviousAmount = 0
-
-    def update(self, newAmount):
-        self.progressBar.update(newAmount - self.updatePreviousAmount)
-        self.updatePreviousAmount = newAmount
-
-
-
 
 
 

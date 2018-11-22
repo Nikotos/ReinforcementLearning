@@ -2,6 +2,7 @@
 from config import *
 from model import *
 from utils import *
+from DopeTech import *
 #--------------------------------------------
 
 
@@ -15,7 +16,8 @@ def mainCycle():
             for next states for Bellman Equation
     """
     #--------------------------------------------
-    keyNet = QModel().to(DEVICE)
+    #keyNet = QModel().to(DEVICE)
+    keyNet = loadFromFile("QNet.pkl")
     helperNet = QModel().to(DEVICE)
     helperNet.load_state_dict(keyNet.state_dict())
     helperNet.eval()
@@ -25,8 +27,8 @@ def mainCycle():
     ENVIRONMENT.render()
 
     
-    fillGameMemoryWithRandomTransitions(gameMemory)
-    saveToFile(gameMemory, "gameMemory.pkl")
+    #fillGameMemoryWithRandomTransitions(gameMemory)
+    #saveToFile(gameMemory, "gameMemory.pkl")
     gameMemory = loadFromFile("gameMemory.pkl")
     stepsDone = 0
     normalAction = lambda state: keyNet(state).max(1)[1].view(1, 1)
@@ -45,14 +47,14 @@ def mainCycle():
             action = epsilonGreedyChooser(normalAction, stateHolder.getState().unsqueeze(0), stepsDone)
             stepsDone += 1
             screen, reward, isDone, info = ENVIRONMENT.step(action)
+            if not isDone:
+                reward += 1
             stateHolder.pushScreen(screen)
             gameMemory.pushScreenActionReward(screen, action, reward, isDone)
-            
             totalDisqountedReward = reward + totalDisqountedReward * DISCOUNT_FACTOR
             
             #performing neural network training on our replayMemory
             statesBatch, actionsBatch, nextStatesBatch, rewardsBatch, terminalMask = gameMemory.getBatch()
-            
             currentQValues = keyNet(statesBatch).gather(1, actionsBatch.unsqueeze(1))
             nextQValues = torch.zeros(BATCH_SIZE, device = DEVICE)
             nextQValues = helperNet(nextStatesBatch).max(1)[0].detach()
@@ -63,11 +65,14 @@ def mainCycle():
             optimizer.zero_grad()
             loss.backward()
         
+        print("totalDisqountedReward = %f" % (totalDisqountedReward))
+        saveToFile(keyNet, "QNet.pkl")
+        saveToFile(gameMemory, "gameMemory.pkl")
         if e % HELPER_UPDATE == 0:
             helperNet.load_state_dict(keyNet.state_dict())
             helperNet.eval()
 
-        print("totalDisqountedReward = %f" % (totalDisqountedReward))
+
 
 
 

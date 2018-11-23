@@ -24,8 +24,8 @@ def mainCycle():
         for next states for Bellman Equation
         """
     #--------------------------------------------
-    #keyNet = QModel().to(DEVICE)
-    keyNet = loadFromFile("QNet.pkl")
+    keyNet = QModel().to(DEVICE)
+    #keyNet = loadFromFile("QNet.pkl")
     helperNet = QModel().to(DEVICE)
     helperNet.load_state_dict(keyNet.state_dict())
     helperNet.eval()
@@ -35,8 +35,8 @@ def mainCycle():
     ENVIRONMENT.render(mode = 'rgb_array')
     
     
-    #fillGameMemoryWithRandomTransitions(gameMemory)
-    #saveToFile(gameMemory, "gameMemory.pkl")
+    fillGameMemoryWithRandomTransitions(gameMemory)
+    saveToFile(gameMemory, "gameMemory.pkl")
     gameMemory = loadFromFile("gameMemory.pkl")
     stepsDone = 0
     normalAction = lambda state: keyNet(state).max(1)[1].view(1, 1)
@@ -45,10 +45,8 @@ def mainCycle():
     
     print("started learning")
     for e in range(AMOUNT_OF_EPISODES):
-        progressBar = myProgressBar(5)
         currentLifes = 5
         pureRewardPerGame = 0
-        totalDisqountedReward = 0
         ENVIRONMENT.reset()
         stateHolder.initWithFirstScreens()
         isDone = False
@@ -61,10 +59,12 @@ def mainCycle():
             pureRewardPerGame += reward
             reward = calculateRewardWithInfoGiven(reward, info, isDone)
             stateHolder.pushScreen(screen)
-            gameMemory.pushScreenActionReward(screen, action, reward, isDone)
-            totalDisqountedReward = reward + totalDisqountedReward * DISCOUNT_FACTOR
             
-            progressBar.update(5 - info['ale.lives'])
+            if info['ale.lives'] < currentLifes:
+                currentLifes -= 1
+                gameMemory.pushScreenActionReward(screen, action, reward, True)
+            else:
+                gameMemory.pushScreenActionReward(screen, action, reward, isDone)
             
             #performing neural network training on our replayMemory
             statesBatch, actionsBatch, nextStatesBatch, rewardsBatch, terminalMask = gameMemory.getBatch()
@@ -81,10 +81,8 @@ def mainCycle():
             for param in keyNet.parameters():
                 param.grad.data.clamp_(-1, 1)
             optimizer.step()
-        
-        print("totalDisqountedReward = %f" % (totalDisqountedReward))
-        print("pureRewardPerGame  = %f" % (pureRewardPerGame ))
-        print("GameMemorySize = %d" % (len(gameMemory)))
+    
+        print("Game - %d, pureRewardPerGame [%f]" % (e, pureRewardPerGame))
         saveToFile(keyNet, "QNet.pkl")
         saveToFile(gameMemory, "gameMemory.pkl")
         if e % HELPER_UPDATE == 0:

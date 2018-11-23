@@ -145,12 +145,17 @@ def fillGameMemoryWithRandomTransitions(gameMemory):
     while len(gameMemory) < START_REPLAY_MEMORY:
         ENVIRONMENT.reset()
         isDone = False
+        currentLifes = 5
         while not isDone:
             action = ENVIRONMENT.action_space.sample()
             screen, reward, isDone, info = ENVIRONMENT.step(action)
             ENVIRONMENT.render()
             reward = calculateRewardWithInfoGiven(reward, info, isDone)
-            gameMemory.pushScreenActionReward(screen, action, reward, isDone)
+            if info['ale.lives'] < currentLifes:
+                currentLifes -= 1
+                gameMemory.pushScreenActionReward(screen, action, reward, True)
+            else:
+                gameMemory.pushScreenActionReward(screen, action, reward, isDone)
             progressBar.update(len(gameMemory))
     print("dataset finished")
 

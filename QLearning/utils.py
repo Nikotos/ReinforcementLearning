@@ -1,4 +1,5 @@
 from config import *
+from DopeTech import *
 import numpy as np
 import pickle
 
@@ -140,17 +141,32 @@ def epsilonGreedyChooser(normalAction, state, stepsDone):
 
 def fillGameMemoryWithRandomTransitions(gameMemory):
     print("Preparing Dataset")
-    progressBar = myProgressBar(REPLAY_MEMORY)
-    while len(gameMemory) < REPLAY_MEMORY:
-        progressBar.update(len(gameMemory))
+    progressBar = myProgressBar(START_REPLAY_MEMORY)
+    while len(gameMemory) < START_REPLAY_MEMORY:
         ENVIRONMENT.reset()
         isDone = False
         while not isDone:
             action = ENVIRONMENT.action_space.sample()
             screen, reward, isDone, info = ENVIRONMENT.step(action)
             ENVIRONMENT.render()
+            reward = calculateRewardWithInfoGiven(reward, info, isDone)
             gameMemory.pushScreenActionReward(screen, action, reward, isDone)
+            progressBar.update(len(gameMemory))
     print("dataset finished")
 
 
 
+def calculateRewardWithInfoGiven(reward, info, isDone):
+    if "currentLifes " not in calculateRewardWithInfoGiven.__dict__:
+        calculateRewardWithInfoGiven.currentLifes = 5
+    if reward == 1:
+        reward *= REWARD_MULTIPLICATOR_FOR_GETTING_POINTS
+    if not isDone:
+        reward += REWARD_FOR_STAYING_ALIVE
+    if info['ale.lives'] < calculateRewardWithInfoGiven.currentLifes:
+        calculateRewardWithInfoGiven.currentLifes -= 1
+        reward -= REWARD_DEDUCTOR_IN_CASE_OF_LOOSE_POINTS
+        if calculateRewardWithInfoGiven.currentLifes == 0:
+            calculateRewardWithInfoGiven.currentLifes == 5
+
+    return reward

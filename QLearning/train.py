@@ -27,9 +27,9 @@ def mainCycle():
     ENVIRONMENT.render()
 
     
-    #fillGameMemoryWithRandomTransitions(gameMemory)
-    #saveToFile(gameMemory, "gameMemory.pkl")
-    gameMemory = loadFromFile("gameMemory.pkl")
+    fillGameMemoryWithRandomTransitions(gameMemory)
+    saveToFile(gameMemory, "gameMemory.pkl")
+    #gameMemory = loadFromFile("gameMemory.pkl")
     stepsDone = 0
     normalAction = lambda state: keyNet(state).max(1)[1].view(1, 1)
     stateHolder = OneStateHolder()
@@ -49,13 +49,7 @@ def mainCycle():
             stepsDone += 1
             screen, reward, isDone, info = ENVIRONMENT.step(action)
             
-            if reward == 1:
-                reward *= 10
-            if not isDone:
-                reward += 1
-            if info['ale.lives'] < currentLifes:
-                currentLifes -= 1
-                reward -= 10
+            reward = calculateRewardWithInfoGiven(reward, info, isDone)
             
             stateHolder.pushScreen(screen)
             gameMemory.pushScreenActionReward(screen, action, reward, isDone)

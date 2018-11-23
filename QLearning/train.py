@@ -6,6 +6,14 @@ from DopeTech import *
 #--------------------------------------------
 
 
+#----------ESSENTIAL_IMPORTS-----------------
+from config import *
+from model import *
+from utils import *
+from DopeTech import *
+#--------------------------------------------
+
+
 
 
 def mainCycle():
@@ -13,8 +21,8 @@ def mainCycle():
         Initialising two nets
         first one - key net, which we are training
         second one - net, that we use to estimate Q-value-function
-            for next states for Bellman Equation
-    """
+        for next states for Bellman Equation
+        """
     #--------------------------------------------
     #keyNet = QModel().to(DEVICE)
     keyNet = loadFromFile("QNet.pkl")
@@ -24,20 +32,22 @@ def mainCycle():
     #--------------------------------------------
     optimizer = optim.Adam(keyNet.parameters(), lr = 1e-4)
     gameMemory = GameMemory()
-    ENVIRONMENT.render()
-
+    ENVIRONMENT.render(mode = 'rgb_array')
     
-    fillGameMemoryWithRandomTransitions(gameMemory)
-    saveToFile(gameMemory, "gameMemory.pkl")
-    #gameMemory = loadFromFile("gameMemory.pkl")
+    
+    #fillGameMemoryWithRandomTransitions(gameMemory)
+    #saveToFile(gameMemory, "gameMemory.pkl")
+    gameMemory = loadFromFile("gameMemory.pkl")
     stepsDone = 0
     normalAction = lambda state: keyNet(state).max(1)[1].view(1, 1)
     stateHolder = OneStateHolder()
     
     
     print("started learning")
-    for e in tqdm.tqdm(range(AMOUNT_OF_EPISODES)):
+    for e in range(AMOUNT_OF_EPISODES):
+        progressBar = myProgressBar(5)
         currentLifes = 5
+        pureRewardPerGame = 0
         totalDisqountedReward = 0
         ENVIRONMENT.reset()
         stateHolder.initWithFirstScreens()
@@ -48,12 +58,13 @@ def mainCycle():
             action = epsilonGreedyChooser(normalAction, stateHolder.getState().unsqueeze(0), stepsDone)
             stepsDone += 1
             screen, reward, isDone, info = ENVIRONMENT.step(action)
-            
+            pureRewardPerGame += reward
             reward = calculateRewardWithInfoGiven(reward, info, isDone)
-            
             stateHolder.pushScreen(screen)
             gameMemory.pushScreenActionReward(screen, action, reward, isDone)
             totalDisqountedReward = reward + totalDisqountedReward * DISCOUNT_FACTOR
+            
+            progressBar.update(5 - info['ale.lives'])
             
             #performing neural network training on our replayMemory
             statesBatch, actionsBatch, nextStatesBatch, rewardsBatch, terminalMask = gameMemory.getBatch()
@@ -64,17 +75,21 @@ def mainCycle():
             expectedQValues = rewardsBatch + nextQValues * DISCOUNT_FACTOR
             expectedQValues = torch.tensor(expectedQValues).unsqueeze(1).to(DEVICE)
             loss = F.smooth_l1_loss(currentQValues, expectedQValues)
+            
             optimizer.zero_grad()
             loss.backward()
+            for param in keyNet.parameters():
+                param.grad.data.clamp_(-1, 1)
+            optimizer.step()
         
         print("totalDisqountedReward = %f" % (totalDisqountedReward))
+        print("pureRewardPerGame  = %f" % (pureRewardPerGame ))
+        print("GameMemorySize = %d" % (len(gameMemory)))
         saveToFile(keyNet, "QNet.pkl")
         saveToFile(gameMemory, "gameMemory.pkl")
         if e % HELPER_UPDATE == 0:
             helperNet.load_state_dict(keyNet.state_dict())
             helperNet.eval()
-
-
 
 
 

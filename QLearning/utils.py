@@ -149,7 +149,7 @@ def fillGameMemoryWithRandomTransitions(gameMemory):
         while not isDone:
             action = ENVIRONMENT.action_space.sample()
             screen, reward, isDone, info = ENVIRONMENT.step(action)
-            ENVIRONMENT.render()
+            ENVIRONMENT.render(mode = 'rgb_array')
             reward = calculateRewardWithInfoGiven(reward, info, isDone)
             if info['ale.lives'] < currentLifes:
                 currentLifes -= 1

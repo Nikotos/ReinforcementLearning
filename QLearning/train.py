@@ -6,14 +6,6 @@ from DopeTech import *
 #--------------------------------------------
 
 
-#----------ESSENTIAL_IMPORTS-----------------
-from config import *
-from model import *
-from utils import *
-from DopeTech import *
-#--------------------------------------------
-
-
 
 
 def mainCycle():
@@ -24,8 +16,8 @@ def mainCycle():
         for next states for Bellman Equation
         """
     #--------------------------------------------
-    keyNet = QModel().to(DEVICE)
-    #keyNet = loadFromFile("QNet.pkl")
+    #keyNet = QModel().to(DEVICE)
+    keyNet = loadFromFile("QNet.pkl")
     helperNet = QModel().to(DEVICE)
     helperNet.load_state_dict(keyNet.state_dict())
     helperNet.eval()
@@ -35,8 +27,8 @@ def mainCycle():
     ENVIRONMENT.render(mode = 'rgb_array')
     
     
-    fillGameMemoryWithRandomTransitions(gameMemory)
-    saveToFile(gameMemory, "gameMemory.pkl")
+    #fillGameMemoryWithRandomTransitions(gameMemory)
+    #saveToFile(gameMemory, "gameMemory.pkl")
     gameMemory = loadFromFile("gameMemory.pkl")
     stepsDone = 0
     normalAction = lambda state: keyNet(state).max(1)[1].view(1, 1)
@@ -52,7 +44,7 @@ def mainCycle():
         isDone = False
         while not isDone:
             #performing action choosing according to epsilon greedy rule
-            ENVIRONMENT.render()
+            ENVIRONMENT.render(mode = 'rgb_array')
             action = epsilonGreedyChooser(normalAction, stateHolder.getState().unsqueeze(0), stepsDone)
             stepsDone += 1
             screen, reward, isDone, info = ENVIRONMENT.step(action)

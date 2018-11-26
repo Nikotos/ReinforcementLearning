@@ -12,7 +12,7 @@ class OneStateHolder:
         if len(self.screens) < 4:
             self.screens.append(stateFromScreen(screen))
         else:
-            self.screens.pop()
+            self.screens.pop(0)
             self.screens.append(stateFromScreen(screen))
 
     def getState(self):
@@ -29,7 +29,7 @@ class OneStateHolder:
     def initWithFirstScreens(self, env = ENVIRONMENT):
         """
             initialise state holder with 4 first screens from
-            environment given by the influence just doing nothing actions
+            environment given by the influence of just doing nothing actions
         """
         self.clear()
         action = 0

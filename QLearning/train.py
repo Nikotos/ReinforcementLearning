@@ -16,8 +16,8 @@ def mainCycle():
         for next states for Bellman Equation
         """
     #--------------------------------------------
-    #keyNet = QModel().to(DEVICE)
-    keyNet = loadFromFile("QNet.pkl")
+    keyNet = QModel().to(DEVICE)
+    #keyNet = loadFromFile("QNet.pkl")
     helperNet = QModel().to(DEVICE)
     helperNet.load_state_dict(keyNet.state_dict())
     helperNet.eval()
@@ -37,6 +37,7 @@ def mainCycle():
     
     print("started learning")
     for e in range(AMOUNT_OF_EPISODES):
+        stepsDone += 1
         currentLifes = 5
         pureRewardPerGame = 0
         ENVIRONMENT.reset()
@@ -44,9 +45,8 @@ def mainCycle():
         isDone = False
         while not isDone:
             #performing action choosing according to epsilon greedy rule
-            ENVIRONMENT.render(mode = 'rgb_array')
+            ENVIRONMENT.render()
             action = epsilonGreedyChooser(normalAction, stateHolder.getState().unsqueeze(0), stepsDone)
-            stepsDone += 1
             screen, reward, isDone, info = ENVIRONMENT.step(action)
             pureRewardPerGame += reward
             reward = calculateRewardWithInfoGiven(reward, info, isDone)

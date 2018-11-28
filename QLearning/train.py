@@ -3,8 +3,8 @@ from config import *
 from model import *
 from utils import *
 from DopeTech import *
+import argparse
 #--------------------------------------------
-
 
 
 
@@ -14,7 +14,7 @@ def mainCycle():
         first one - key net, which we are training
         second one - net, that we use to estimate Q-value-function
         for next states for Bellman Equation
-        """
+    """
     #--------------------------------------------
     keyNet = QModel().to(DEVICE)
     #keyNet = loadFromFile("QNet.pkl")
@@ -38,53 +38,25 @@ def mainCycle():
     print("started learning")
     for e in range(AMOUNT_OF_EPISODES):
         stepsDone += 1
-        currentLifes = 5
-        pureRewardPerGame = 0
+        currentLifes = MutableInsideVariable(5)
+        pureRewardPerGame = MutableInsideVariable(0)
         ENVIRONMENT.reset()
         stateHolder.initWithFirstScreens()
         isDone = False
+        iterator = 0
         while not isDone:
-            #performing action choosing according to epsilon greedy rule
-            ENVIRONMENT.render()
-            action = epsilonGreedyChooser(normalAction, stateHolder.getState().unsqueeze(0), stepsDone)
-            screen, reward, isDone, info = ENVIRONMENT.step(action)
-            pureRewardPerGame += reward
-            reward = calculateRewardWithInfoGiven(reward, info, isDone)
-            stateHolder.pushScreen(screen)
-            
-            if info['ale.lives'] < currentLifes:
-                currentLifes -= 1
-                gameMemory.pushScreenActionReward(screen, action, reward, True)
-            else:
-                gameMemory.pushScreenActionReward(screen, action, reward, isDone)
-            
-            #performing neural network training on our replayMemory
-            statesBatch, actionsBatch, nextStatesBatch, rewardsBatch, terminalMask = gameMemory.getBatch()
-            currentQValues = keyNet(statesBatch).gather(1, actionsBatch.unsqueeze(1))
-            nextQValues = torch.zeros(BATCH_SIZE, device = DEVICE)
-            nextQValues = helperNet(nextStatesBatch).max(1)[0].detach()
-            nextQValues[terminalMask == 1] = 0
-            expectedQValues = rewardsBatch + nextQValues * DISCOUNT_FACTOR
-            expectedQValues = torch.tensor(expectedQValues).unsqueeze(1).to(DEVICE)
-            loss = F.smooth_l1_loss(currentQValues, expectedQValues)
-            
-            optimizer.zero_grad()
-            loss.backward()
-            for param in keyNet.parameters():
-                param.grad.data.clamp_(-1, 1)
-            optimizer.step()
+            iterator += 1
+            isDone = performGameStep(normalAction, stateHolder, stepsDone, gameMemory, pureRewardPerGame, currentLifes)
+            if iterator % OPTIMIZATION_STEP == 0:
+                makeOptimizationStep(keyNet, helperNet, gameMemory, optimizer)
+                
     
-        print("Game - %d, pureRewardPerGame [%f]" % (e, pureRewardPerGame))
+        print("Game - %d, pureRewardPerGame [%d]" % (e, pureRewardPerGame.getValue()))
         saveToFile(keyNet, "QNet.pkl")
         saveToFile(gameMemory, "gameMemory.pkl")
         if e % HELPER_UPDATE == 0:
             helperNet.load_state_dict(keyNet.state_dict())
             helperNet.eval()
-
-
-
-
-
 
 
 

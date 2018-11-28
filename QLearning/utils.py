@@ -115,22 +115,27 @@ class GameMemory:
         return self.actualMemoryLen
 
 
-
 def stateFromScreen(screen):
+    """
+        getting state from screen to been fed to network
+    """
     resize = T.Compose([T.ToPILImage(),
                         T.Resize((INPUT_SIZE, INPUT_SIZE), interpolation=Image.CUBIC),
                         T.ToTensor()])
                         
     screen = np.dot(screen[...,:3], [0.299, 0.587, 0.114])
-    screen = screen[30:195,:]
+    screen = screen[30:195]
+    #we need this line because we building our array as slice from another numpy array
     screen = np.ascontiguousarray(screen, dtype=np.uint8).reshape(screen.shape[0],screen.shape[1],1)
     return resize(screen).mul(255).type(torch.ByteTensor).to(DEVICE).detach()
 
 
 
 
-
 def epsilonGreedyChooser(normalAction, state, stepsDone):
+    """
+        E-greedy choosing between Q-Net prediction and random action
+    """
     epsThreshold = EPS_END + (EPS_START - EPS_END) * math.exp(-1. * stepsDone / EPS_DECAY)
     randomSample = random.random()
     if randomSample > epsThreshold:
@@ -139,7 +144,12 @@ def epsilonGreedyChooser(normalAction, state, stepsDone):
         return ENVIRONMENT.action_space.sample()
 
 
+
+
 def fillGameMemoryWithRandomTransitions(gameMemory):
+    """
+        Preparing Game Memory with random transition
+    """
     print("Preparing Dataset")
     progressBar = myProgressBar(START_REPLAY_MEMORY)
     while len(gameMemory) < START_REPLAY_MEMORY:
@@ -161,7 +171,13 @@ def fillGameMemoryWithRandomTransitions(gameMemory):
 
 
 
+
+
 def calculateRewardWithInfoGiven(reward, info, isDone):
+    """
+        Calculate rewards according to information about game session
+    """
+    
     if "currentLifes " not in calculateRewardWithInfoGiven.__dict__:
         calculateRewardWithInfoGiven.currentLifes = 5
     if reward == 1:
@@ -175,3 +191,47 @@ def calculateRewardWithInfoGiven(reward, info, isDone):
             calculateRewardWithInfoGiven.currentLifes == 5
 
     return reward
+
+
+
+
+
+def makeOptimizationStep(modelNet, targetNet, gameMemory, optimizer):
+    """
+    make optimization step based on our Replay Game memory
+    Just usuall Q-Learning
+    """
+    statesBatch, actionsBatch, nextStatesBatch, rewardsBatch, terminalMask = gameMemory.getBatch()
+    currentQValues = modelNet(statesBatch).gather(1, actionsBatch.unsqueeze(1))
+    #nextQValues = torch.zeros(BATCH_SIZE, device = DEVICE)
+    nextQValues = targetNet(nextStatesBatch).max(1)[0].detach()
+    nextQValues[terminalMask == 1] = 0
+    expectedQValues = rewardsBatch + nextQValues * DISCOUNT_FACTOR
+    expectedQValues = torch.tensor(expectedQValues).unsqueeze(1).to(DEVICE)
+    loss = F.smooth_l1_loss(currentQValues, expectedQValues)
+
+    optimizer.zero_grad()
+    loss.backward()
+    for param in modelNet.parameters():
+        param.grad.data.clamp_(-1, 1)
+        optimizer.step()
+
+
+
+def performGameStep(action, stateHolder, stepsDone, gameMemory, currentLifes, pureRewardPerGame):
+    """
+        perform interaction with environment
+    """
+    ENVIRONMENT.render()
+    action = epsilonGreedyChooser(action, stateHolder.getState().unsqueeze(0), stepsDone)
+    screen, reward, isDone, info = ENVIRONMENT.step(action)
+    pureRewardPerGame += reward
+    reward = calculateRewardWithInfoGiven(reward, info, isDone)
+    stateHolder.pushScreen(screen)
+    if info['ale.lives'] < currentLifes.getValue():
+        currentLifes -= 1
+        gameMemory.pushScreenActionReward(screen, action, reward, True)
+    else:
+        gameMemory.pushScreenActionReward(screen, action, reward, isDone)
+    
+    return isDone

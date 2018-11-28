@@ -139,7 +139,7 @@ def epsilonGreedyChooser(normalAction, state, stepsDone):
     epsThreshold = EPS_END + (EPS_START - EPS_END) * math.exp(-1. * stepsDone / EPS_DECAY)
     randomSample = random.random()
     if randomSample > epsThreshold:
-        return normalAction(state).max(1)[1].view(1, 1)
+        return normalAction(state)
     else:
         return ENVIRONMENT.action_space.sample()
 
@@ -218,12 +218,13 @@ def makeOptimizationStep(modelNet, targetNet, gameMemory, optimizer):
 
 
 
-def performGameStep(action, stateHolder, stepsDone, gameMemory, currentLifes, pureRewardPerGame):
+def performGameStep(normalAction, stateHolder, stepsDone, gameMemory, currentLifes, pureRewardPerGame):
     """
         perform interaction with environment
     """
-    ENVIRONMENT.render()
-    action = epsilonGreedyChooser(action, stateHolder.getState().unsqueeze(0), stepsDone)
+    
+    ENVIRONMENT.render(mode = "rgb_array")
+    action = epsilonGreedyChooser(normalAction, stateHolder.getState().unsqueeze(0), stepsDone)
     screen, reward, isDone, info = ENVIRONMENT.step(action)
     pureRewardPerGame += reward
     reward = calculateRewardWithInfoGiven(reward, info, isDone)

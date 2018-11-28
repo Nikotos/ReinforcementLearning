@@ -38,6 +38,8 @@ class MutableInsideVariable:
     
     def __iadd__(self, addition):
         self.variable += addition
+        return self
 
     def __isub__(self, subtrahend):
         self.variable -= subtrahend
+        return self

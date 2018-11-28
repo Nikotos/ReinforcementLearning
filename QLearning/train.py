@@ -48,7 +48,7 @@ def mainCycle():
         iterator = 0
         while not isDone:
             iterator += 1
-            isDone = performGameStep(normalAction, stateHolder, stepsDone, gameMemory, pureRewardPerGame, currentLifes)
+            isDone = performGameStep(normalAction, stateHolder, stepsDone, gameMemory, currentLifes, pureRewardPerGame)
             if iterator % OPTIMIZATION_STEP == 0:
                 makeOptimizationStep(keyNet, helperNet, gameMemory, optimizer)
                 

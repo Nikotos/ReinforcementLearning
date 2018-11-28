@@ -27,6 +27,8 @@ def mainCycle():
     ENVIRONMENT.render(mode = 'rgb_array')
     
     
+    logFile = open("log.txt", "w")
+    
     #fillGameMemoryWithRandomTransitions(gameMemory)
     #saveToFile(gameMemory, "gameMemory.pkl")
     gameMemory = loadFromFile("gameMemory.pkl")
@@ -52,6 +54,7 @@ def mainCycle():
                 
     
         print("Game - %d, pureRewardPerGame [%d]" % (e, pureRewardPerGame.getValue()))
+        logFile.writelines("Game - %d, pureRewardPerGame [%d]" % (e, pureRewardPerGame.getValue()))
         saveToFile(keyNet, "QNet.pkl")
         saveToFile(gameMemory, "gameMemory.pkl")
         if e % HELPER_UPDATE == 0:

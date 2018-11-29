@@ -33,7 +33,8 @@ def mainCycle():
     stepsDone = 0
     normalAction = lambda state: keyNet(state)
     stateHolder = OneStateHolder()
-    
+    summaryReward = 0
+ 
     
     print("started learning")
     for e in range(AMOUNT_OF_EPISODES):
@@ -49,12 +50,12 @@ def mainCycle():
             if iterator % OPTIMIZATION_STEP == 0:
                 makeOptimizationStep(keyNet, helperNet, gameMemory, optimizer)
                 
-    
+        summaryReward += pureRewardPerGame.getValue()
         print("Game - %d, pureRewardPerGame [%d]" % (e, pureRewardPerGame.getValue()))
         if e % PRINT_EVERY == 0:
-            print("Game - %d, pureRewardPerGame [%d]" % (e, pureRewardPerGame.getValue() / PRINT_EVERY))
             with open("log.txt", "a") as f:
-                print("Game - %d, pureRewardPerGame [%d]" % (e, pureRewardPerGame.getValue() / PRINT_EVERY), file=f)
+                print(e, summaryReward / PRINT_EVERY, file=f)
+                summaryReward = 0
                     
         if e % SAVE_EVERY == 0:
             saveToFile(keyNet, "QNet.pkl")

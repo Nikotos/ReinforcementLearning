@@ -27,20 +27,17 @@ def mainCycle():
     ENVIRONMENT.render(mode = 'rgb_array')
     
     
-    logFile = open("log.txt", "w")
-    
-    #fillGameMemoryWithRandomTransitions(gameMemory)
-    #saveToFile(gameMemory, "gameMemory.pkl")
+    fillGameMemoryWithRandomTransitions(gameMemory)
+    saveToFile(gameMemory, "gameMemory.pkl")
     gameMemory = loadFromFile("gameMemory.pkl")
     stepsDone = 0
-    normalAction = lambda state: keyNet(state).max(1)[1].view(1, 1)
+    normalAction = lambda state: keyNet(state)
     stateHolder = OneStateHolder()
     
     
     print("started learning")
     for e in range(AMOUNT_OF_EPISODES):
         stepsDone += 1
-        currentLifes = MutableInsideVariable(5)
         pureRewardPerGame = MutableInsideVariable(0)
         ENVIRONMENT.reset()
         stateHolder.initWithFirstScreens()
@@ -48,15 +45,20 @@ def mainCycle():
         iterator = 0
         while not isDone:
             iterator += 1
-            isDone = performGameStep(normalAction, stateHolder, stepsDone, gameMemory, currentLifes, pureRewardPerGame)
+            isDone = performGameStep(normalAction, stateHolder, stepsDone, gameMemory, pureRewardPerGame)
             if iterator % OPTIMIZATION_STEP == 0:
                 makeOptimizationStep(keyNet, helperNet, gameMemory, optimizer)
                 
     
         print("Game - %d, pureRewardPerGame [%d]" % (e, pureRewardPerGame.getValue()))
-        logFile.writelines("Game - %d, pureRewardPerGame [%d]" % (e, pureRewardPerGame.getValue()))
-        saveToFile(keyNet, "QNet.pkl")
-        saveToFile(gameMemory, "gameMemory.pkl")
+        if e % PRINT_EVERY == 0:
+            print("Game - %d, pureRewardPerGame [%d]" % (e, pureRewardPerGame.getValue() / PRINT_EVERY))
+            with open("log.txt", "a") as f:
+                print("Game - %d, pureRewardPerGame [%d]" % (e, pureRewardPerGame.getValue() / PRINT_EVERY), file=f)
+                    
+        if e % SAVE_EVERY == 0:
+            saveToFile(keyNet, "QNet.pkl")
+            saveToFile(gameMemory, "gameMemory.pkl")
         if e % HELPER_UPDATE == 0:
             helperNet.load_state_dict(keyNet.state_dict())
             helperNet.eval()

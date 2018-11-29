@@ -139,7 +139,9 @@ def epsilonGreedyChooser(normalAction, state, stepsDone):
     epsThreshold = EPS_END + (EPS_START - EPS_END) * math.exp(-1. * stepsDone / EPS_DECAY)
     randomSample = random.random()
     if randomSample > epsThreshold:
-        return normalAction(state)
+        action = normalAction(state).max(1)[1].view(1, 1)[0].item()
+        #print(action)
+        return action
     else:
         return ENVIRONMENT.action_space.sample()
 
@@ -203,25 +205,26 @@ def makeOptimizationStep(modelNet, targetNet, gameMemory, optimizer):
     """
     statesBatch, actionsBatch, nextStatesBatch, rewardsBatch, terminalMask = gameMemory.getBatch()
     currentQValues = modelNet(statesBatch).gather(1, actionsBatch.unsqueeze(1))
-    #nextQValues = torch.zeros(BATCH_SIZE, device = DEVICE)
     nextQValues = targetNet(nextStatesBatch).max(1)[0].detach()
     nextQValues[terminalMask == 1] = 0
     expectedQValues = rewardsBatch + nextQValues * DISCOUNT_FACTOR
     expectedQValues = torch.tensor(expectedQValues).unsqueeze(1).to(DEVICE)
     loss = F.smooth_l1_loss(currentQValues, expectedQValues)
-
     optimizer.zero_grad()
     loss.backward()
     for param in modelNet.parameters():
         param.grad.data.clamp_(-1, 1)
-        optimizer.step()
+    optimizer.step()
 
 
 
-def performGameStep(normalAction, stateHolder, stepsDone, gameMemory, currentLifes, pureRewardPerGame):
+def performGameStep(normalAction, stateHolder, stepsDone, gameMemory, pureRewardPerGame):
     """
-        perform interaction with environment
+        perform interaction with the environment
     """
+    # creating static variable
+    if "currentLifes " not in performGameStep.__dict__:
+        performGameStep.currentLifes = 5
     
     ENVIRONMENT.render(mode = "rgb_array")
     action = epsilonGreedyChooser(normalAction, stateHolder.getState().unsqueeze(0), stepsDone)
@@ -229,10 +232,14 @@ def performGameStep(normalAction, stateHolder, stepsDone, gameMemory, currentLif
     pureRewardPerGame += reward
     reward = calculateRewardWithInfoGiven(reward, info, isDone)
     stateHolder.pushScreen(screen)
-    if info['ale.lives'] < currentLifes.getValue():
-        currentLifes -= 1
+
+    if info['ale.lives'] < performGameStep.currentLifes:
+        if info['ale.lives'] == 0:
+            performGameStep.currentLifes = 5
+        else:
+            performGameStep.currentLifes -= 1
         gameMemory.pushScreenActionReward(screen, action, reward, True)
     else:
         gameMemory.pushScreenActionReward(screen, action, reward, isDone)
-    
+
     return isDone

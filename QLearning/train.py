@@ -22,7 +22,7 @@ def mainCycle():
     helperNet.load_state_dict(keyNet.state_dict())
     helperNet.eval()
     #--------------------------------------------
-    optimizer = optim.Adam(keyNet.parameters(), lr = 1e-4)
+    optimizer = optim.Adam(keyNet.parameters(), lr = LEARNING_RATE)
     gameMemory = GameMemory()
     ENVIRONMENT.render(mode = 'rgb_array')
     
